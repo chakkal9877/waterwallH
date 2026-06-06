@@ -1,5 +1,5 @@
 #!/bin/bash
-# WaterWall Half-Duplex v1.30 - Fixed & Optimized
+# WaterWall Half-Duplex v1.30 - Fixed Config
 
 Purple='\033[0;35m'
 Cyan='\033[0;36m'
@@ -9,7 +9,7 @@ NC='\033[0m'
 clear
 echo "
 ══════════════════════════════════════════════════════════════════════════════════════
-                WaterWall Half-Duplex (v1.30)
+                WaterWall Half-Duplex (v1.30) - Fixed
 ══════════════════════════════════════════════════════════════════════════════════════"
 
 download_and_unzip() {
@@ -18,7 +18,7 @@ download_and_unzip() {
   unzip -o Waterwall-linux-64.zip
   chmod +x Waterwall
   rm -f Waterwall-linux-64.zip
-  echo "Download and unzip completed."
+  echo "Download completed."
 }
 
 setup_service() {
@@ -73,54 +73,185 @@ EOF
 
     if [ "$choice" -eq 1 ]; then
         read -p "Enter Kharej IPv4: " ip_remote
-        read -p "Enter SNI (default: dns.google): " input_sni
-        HOSTNAME=${input_sni:-dns.google}
+        read -p "Enter SNI (default: speedtest.net): " input_sni
+        HOSTNAME=${input_sni:-speedtest.net}
 
-        cat > config.json << EOF
+        cat > config.json << 'EOF'
 {
     "name": "iran_hd_v130",
     "nodes": [
-        {"name": "multi", "type": "TcpListener", "settings": {"address": "0.0.0.0", "port": [23000,65535], "nodelay": true}, "next": "header"},
-        {"name": "header", "type": "HeaderClient", "settings": {"data": "src_context->port"}, "next": "b2"},
-        {"name": "b2", "type": "Bridge", "settings": {"pair": "b1"}},
-        {"name": "b1", "type": "Bridge", "settings": {"pair": "b2"}},
-        {"name": "rev", "type": "ReverseServer", "next": "b1"},
-        {"name": "pb", "type": "ProtoBufServer", "next": "rev"},
-        {"name": "h2", "type": "Http2Server", "next": "pb"},
-        {"name": "half", "type": "HalfDuplexServer", "next": "h2"},
-        {"name": "reality", "type": "RealityServer", "settings": {"destination": "dest", "password": "2249AHS2200"}, "next": "half"},
-        {"name": "in443", "type": "TcpListener", "settings": {"address": "0.0.0.0", "port": 443, "whitelist": ["$ip_remote/32"]}, "next": "reality"},
-        {"name": "dest", "type": "TcpConnector", "settings": {"address": "$HOSTNAME", "port": 443}}
+        {
+            "name": "multi",
+            "type": "TcpListener",
+            "settings": {
+                "address": "0.0.0.0",
+                "port": [23000,65535],
+                "nodelay": true
+            },
+            "next": "header"
+        },
+        {
+            "name": "header",
+            "type": "HeaderClient",
+            "settings": {
+                "data": "src_context->port"
+            },
+            "next": "b2"
+        },
+        {
+            "name": "b2",
+            "type": "Bridge",
+            "settings": { "pair": "b1" }
+        },
+        {
+            "name": "b1",
+            "type": "Bridge",
+            "settings": { "pair": "b2" }
+        },
+        {
+            "name": "rev",
+            "type": "ReverseServer",
+            "next": "b1"
+        },
+        {
+            "name": "pb",
+            "type": "ProtoBufServer",
+            "next": "rev"
+        },
+        {
+            "name": "h2",
+            "type": "Http2Server",
+            "next": "pb"
+        },
+        {
+            "name": "half",
+            "type": "HalfDuplexServer",
+            "next": "h2"
+        },
+        {
+            "name": "reality",
+            "type": "RealityServer",
+            "settings": {
+                "destination": "dest",
+                "password": "2249AHS2200"
+            },
+            "next": "half"
+        },
+        {
+            "name": "in443",
+            "type": "TcpListener",
+            "settings": {
+                "address": "0.0.0.0",
+                "port": 443,
+                "whitelist": ["IP_KHAREJ/32"]
+            },
+            "next": "reality"
+        },
+        {
+            "name": "dest",
+            "type": "TcpConnector",
+            "settings": {
+                "address": "speedtest.net",
+                "port": 443
+            }
+        }
     ]
 }
 EOF
+        sed -i "s/IP_KHAREJ/$ip_remote/g" config.json
         setup_service
-        echo -e "${Cyan}Iran (v1.30) setup completed!${NC}"
+        echo -e "${Cyan}Iran setup completed successfully!${NC}"
 
     elif [ "$choice" -eq 2 ]; then
         read -p "Enter Iran IP: " ip_remote
-        read -p "Enter SNI (default: dns.google): " input_sni
-        HOSTNAME=${input_sni:-dns.google}
+        read -p "Enter SNI (default: speedtest.net): " input_sni
+        HOSTNAME=${input_sni:-speedtest.net}
 
-        cat > config.json << EOF
+        cat > config.json << 'EOF'
 {
     "name": "kharej_hd_v130",
     "nodes": [
-        {"name": "out", "type": "TcpConnector", "settings": {"address": "127.0.0.1", "port": "dest_context->port"}},
-        {"name": "header", "type": "HeaderServer", "settings": {"override": "dest_context->port"}, "next": "out"},
-        {"name": "b1", "type": "Bridge", "settings": {"pair": "b2"}, "next": "header"},
-        {"name": "b2", "type": "Bridge", "settings": {"pair": "b1"}, "next": "rev"},
-        {"name": "rev", "type": "ReverseClient", "settings": {"minimum-unused": 16}, "next": "pb"},
-        {"name": "pb", "type": "ProtoBufClient", "next": "h2"},
-        {"name": "h2", "type": "Http2Client", "settings": {"host": "$HOSTNAME", "port": 443, "path": "/", "contenttype": "application/grpc", "concurrency": 64}, "next": "half"},
-        {"name": "half", "type": "HalfDuplexClient", "next": "reality"},
-        {"name": "reality", "type": "RealityClient", "settings": {"sni": "$HOSTNAME", "password": "2249AHS2200"}, "next": "toiran"},
-        {"name": "toiran", "type": "TcpConnector", "settings": {"address": "$ip_remote", "port": 443}}
+        {
+            "name": "out",
+            "type": "TcpConnector",
+            "settings": {
+                "address": "127.0.0.1",
+                "port": "dest_context->port"
+            }
+        },
+        {
+            "name": "header",
+            "type": "HeaderServer",
+            "settings": {
+                "override": "dest_context->port"
+            },
+            "next": "out"
+        },
+        {
+            "name": "b1",
+            "type": "Bridge",
+            "settings": { "pair": "b2" },
+            "next": "header"
+        },
+        {
+            "name": "b2",
+            "type": "Bridge",
+            "settings": { "pair": "b1" },
+            "next": "rev"
+        },
+        {
+            "name": "rev",
+            "type": "ReverseClient",
+            "settings": {
+                "minimum-unused": 16
+            },
+            "next": "pb"
+        },
+        {
+            "name": "pb",
+            "type": "ProtoBufClient",
+            "next": "h2"
+        },
+        {
+            "name": "h2",
+            "type": "Http2Client",
+            "settings": {
+                "host": "speedtest.net",
+                "port": 443,
+                "path": "/",
+                "contenttype": "application/grpc",
+                "concurrency": 64
+            },
+            "next": "half"
+        },
+        {
+            "name": "half",
+            "type": "HalfDuplexClient",
+            "next": "reality"
+        },
+        {
+            "name": "reality",
+            "type": "RealityClient",
+            "settings": {
+                "sni": "speedtest.net",
+                "password": "2249AHS2200"
+            },
+            "next": "toiran"
+        },
+        {
+            "name": "toiran",
+            "type": "TcpConnector",
+            "settings": {
+                "address": "IP_IRAN",
+                "port": 443
+            }
+        }
     ]
 }
 EOF
+        sed -i "s/IP_IRAN/$ip_remote/g" config.json
         setup_service
-        echo -e "${Cyan}Kharej (v1.30) setup completed!${NC}"
+        echo -e "${Cyan}Kharej setup completed successfully!${NC}"
 
     elif [ "$choice" -eq 3 ]; then
         systemctl stop waterwall 2>/dev/null
