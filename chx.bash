@@ -1,5 +1,5 @@
 #!/bin/bash
-# WaterWall Half-Duplex Script - Fixed & Complete
+# WaterWall Half-Duplex Script - Fixed & Optimized (2026)
 
 Purple='\033[0;35m'
 Cyan='\033[0;36m'
@@ -9,14 +9,14 @@ NC='\033[0m'
 clear
 echo "
 ══════════════════════════════════════════════════════════════════════════════════════
-                WaterWall Half-Duplex (Fixed & Complete)
+                WaterWall Half-Duplex (Fixed - GCC x64)
 ══════════════════════════════════════════════════════════════════════════════════════"
 
 ARCH=$(uname -m)
 if [ "$ARCH" == "aarch64" ]; then
   ASSET_NAME="Waterwall-linux-arm64.zip"
 elif [ "$ARCH" == "x86_64" ]; then
-  ASSET_NAME="Waterwall-linux-clang-avx512f-x64.zip"
+  ASSET_NAME="Waterwall-linux-gcc-x64.zip"   # نسخه درست با libs
 else
   echo "Unsupported architecture: $ARCH"
   exit 1
@@ -41,11 +41,6 @@ download_and_unzip() {
 get_latest_release_url() {
   local response=$(curl -s https://api.github.com/repos/radkesvat/WaterWall/releases/latest)
   local asset_url=$(echo "$response" | jq -r ".assets[] | select(.name == \"$ASSET_NAME\") | .browser_download_url")
-  if [ -z "$asset_url" ]; then
-    echo "Trying fallback asset..."
-    ASSET_NAME="Waterwall-linux-64.zip"
-    asset_url=$(echo "$response" | jq -r ".assets[] | select(.name == \"$ASSET_NAME\") | .browser_download_url")
-  fi
   echo "$asset_url"
 }
 
@@ -79,14 +74,14 @@ while true; do
 
     if [[ "$choice" -eq 1 || "$choice" -eq 2 ]]; then
         mkdir -p /root/RRT && cd /root/RRT
-        apt install unzip jq curl wget -y
+        apt update && apt install unzip jq curl wget -y
 
         read -p "Do you want to install the latest version? (y/n): " answer
         if [[ "$answer" == [Yy]* ]]; then
             url=$(get_latest_release_url)
             if [ -z "$url" ]; then
-                echo "Failed to get download link."
-                exit 1
+                echo "Failed to get download link. Using direct link..."
+                url="https://github.com/radkesvat/WaterWall/releases/download/v1.44.3/Waterwall-linux-gcc-x64.zip"
             fi
             download_and_unzip "$url" "$ASSET_NAME"
         fi
@@ -105,8 +100,8 @@ EOF
 
     if [ "$choice" -eq 1 ]; then
         read -p "Enter Kharej IPv4: " ip_remote
-        read -p "Enter SNI (default: ipmart.shop): " input_sni
-        HOSTNAME=${input_sni:-ipmart.shop}
+        read -p "Enter SNI (default: dns.google): " input_sni
+        HOSTNAME=${input_sni:-dns.google}
 
         cat > config.json << EOF
 {
@@ -127,12 +122,12 @@ EOF
 }
 EOF
         setup_service
-        echo -e "${Cyan}Iran setup completed!${NC}"
+        echo -e "${Cyan}Iran setup completed successfully!${NC}"
 
     elif [ "$choice" -eq 2 ]; then
         read -p "Enter Iran IP: " ip_remote
-        read -p "Enter SNI (default: ipmart.shop): " input_sni
-        HOSTNAME=${input_sni:-ipmart.shop}
+        read -p "Enter SNI (default: dns.google): " input_sni
+        HOSTNAME=${input_sni:-dns.google}
 
         cat > config.json << EOF
 {
@@ -152,7 +147,7 @@ EOF
 }
 EOF
         setup_service
-        echo -e "${Cyan}Kharej setup completed!${NC}"
+        echo -e "${Cyan}Kharej setup completed successfully!${NC}"
 
     elif [ "$choice" -eq 3 ]; then
         systemctl stop waterwall 2>/dev/null
@@ -163,7 +158,5 @@ EOF
         echo "Uninstalled successfully."
     elif [ "$choice" -eq 0 ]; then
         break
-    else
-        echo "Invalid option!"
     fi
 done
